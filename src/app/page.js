@@ -254,7 +254,7 @@ export default function Home() {
                 Inventory Items
               </Typography>
             </Box>
-            <Stack width="100%" height="400px" overflow={'auto'} bgcolor="white">
+            <Stack width="100%" height="300px" overflow={'auto'} bgcolor="white">
               {filteredInventory.map(({name, quantity}) => (
                 <Box
                   key={name}
