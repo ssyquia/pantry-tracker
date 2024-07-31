@@ -75,14 +75,14 @@ const quantityControlsStyle = {
   display: 'flex',
   alignItems: 'center',
   gap: '10px',
-};
+}
 
 const quantityButtonStyle = {
   height: '24px',
   fontSize: '1.2rem',
   color: '#FFFFFF',
   borderRadius: '20px',
-  minWidth: 0
+  minWidth: 0,
 }
 
 const addQuantityStyle = {
@@ -90,7 +90,7 @@ const addQuantityStyle = {
   '&:hover': {
     backgroundColor: '#45A049',
   },
-};
+}
 
 const subtractQuantityStyle = {
   backgroundColor: '#f44336',
@@ -99,8 +99,6 @@ const subtractQuantityStyle = {
   },
 }
 
-
-
 export default function Home() {
   const [inventory, setInventory] = useState([])
   const [open, setOpen] = useState(false)
@@ -108,7 +106,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('')
 
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
-  const isShortScreen = useMediaQuery('(max-height: 820px)');
+  const isShortScreen = useMediaQuery('(max-height: 820px)')
 
   const updateInventory = async () => {
     const snapshot = query(collection(firestore, 'inventory'))
@@ -165,7 +163,7 @@ export default function Home() {
         width="100vw"
         height="100vh"
         display={'flex'}
-        justifyContent={isShortScreen ? 'flex-start': 'center'}
+        justifyContent={isShortScreen ? 'flex-start' : 'center'}
         flexDirection={'column'}
         alignItems={'center'}
         bgcolor={'#FFFFFF'}
@@ -173,6 +171,7 @@ export default function Home() {
         sx={{ overflow: 'auto' }}
       >
         <Box 
+          className={isShortScreen ? 'short-screen-card' : ''}
           sx={{ 
             width: { xs: '100%', sm: '85%', md: '65%' }, 
             p: { xs: 2, sm: 4, md: 5 }, 
