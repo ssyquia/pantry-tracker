@@ -24,19 +24,16 @@ const theme = createTheme({
   typography: {
     fontFamily: '"Open Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     h1: {
-      fontSize: 'clamp(2.25rem, 5vw, 4rem)',  // Responsive font size
-    },
-    h2: {
       fontSize: 'clamp(2rem, 4vw, 3rem)',  // Responsive font size
     },
-    h3: {
+    h2: {
       fontSize: 'clamp(1.5rem, 3.5vw, 2.5rem)',  // Responsive font size
     },
-    h5: {
-      fontSize: 'clamp(1rem, 2.5vw, 1.5rem)',
+    h3: {
+      fontSize: 'clamp(1.1rem, 2.5vw, 1.5rem)',
     },
-    body1: {
-      fontSize: 'clamp(1rem, 2vw, 1.2rem)', // Responsive font size
+    h5: {
+      fontSize: 'clamp(1rem, 2.2vw, 1.2rem)', // Responsive font size
     }
   },
   shape: {
