@@ -171,14 +171,14 @@ export default function Home() {
           className={isShortScreen ? 'short-screen-card' : ''}
           sx={{ 
             width: { xs: '100%', sm: '85%', md: '65%' }, 
-            p: { xs: 2, sm: 4, md: 5 }, 
+            p: { xs: 2, sm: 3, md: 4 }, 
             bgcolor: isMobile ? 'transparent' : '#F0F0F0', 
             boxShadow: isMobile ? 'none' : 6, 
             borderRadius: isMobile ? 0 : 3, 
             border: isMobile ? 'none' : '1px solid #ddd',
           }}
         >
-          <Typography variant="h1" color="black" mb={6} fontWeight="bold">
+          <Typography variant="h1" color="black" mb={4} fontWeight="bold">
             Pantry Tracker 🥕
           </Typography>
           <Modal
@@ -214,7 +214,7 @@ export default function Home() {
               </Stack>
             </Box>
           </Modal>
-          <Box display="flex" justifyContent="space-between" mb={4}>
+          <Box display="flex" justifyContent="space-between" mb={3}>
             <TextField
               label="Search"
               variant="outlined"
