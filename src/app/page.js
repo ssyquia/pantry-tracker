@@ -103,7 +103,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('')
 
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
-  const isShortScreen = useMediaQuery('(max-height: 820px)')
+  const isShortScreen = useMediaQuery('(max-height: 720px)')
 
   const updateInventory = async () => {
     const snapshot = query(collection(firestore, 'inventory'))
