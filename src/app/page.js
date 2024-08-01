@@ -1,10 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createTheme, ThemeProvider } from '@mui/material/styles'
-import { Box, Stack, Typography, Button, Modal, TextField, CssBaseline, useMediaQuery } from '@mui/material'
-import { firestore } from '@/firebase'
+import { Grid, Box, Stack, Typography, Button, Modal, TextField, CssBaseline, useMediaQuery, Snackbar, CircularProgress } from '@mui/material'
+import { firestore, storage } from '@/firebase'
 import { collection, doc, getDocs, query, setDoc, deleteDoc, getDoc } from 'firebase/firestore'
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
+import { Camera } from "react-camera-pro";
+import { FaCamera } from "react-icons/fa";
 
 const theme = createTheme({
   palette: {
@@ -46,7 +49,6 @@ const modalStyle = {
   top: '50%',
   left: '50%',
   transform: 'translate(-50%, -50%)',
-  width: 400,
   bgcolor: 'white',
   boxShadow: 24,
   p: 4,
@@ -70,8 +72,7 @@ const addItemButtonStyle = {
 
 const quantityControlsStyle = {
   display: 'flex',
-  alignItems: 'center',
-  gap: '10px',
+  alignItems: 'center'
 }
 
 const quantityButtonStyle = {
@@ -96,11 +97,32 @@ const subtractQuantityStyle = {
   },
 }
 
+const cameraButtonStyle = {
+  backgroundColor: '#0D47A1',
+  color: '#FFFFFF',
+  border: 'none',
+  borderRadius: '12px',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '10px',
+  '&:hover': {
+    backgroundColor: '#0A3D91',
+  },
+}
+
 export default function Home() {
   const [inventory, setInventory] = useState([])
   const [open, setOpen] = useState(false)
   const [itemName, setItemName] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const cameraRef = useRef(null)
+
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarImage, setSnackbarImage] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [imageUrl, setImageUrl] = useState("");
 
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const isShortScreen = useMediaQuery('(max-height: 720px)')
@@ -119,34 +141,118 @@ export default function Home() {
     updateInventory()
   }, [])
 
-  const addItem = async (item) => {
-    const docRef = doc(collection(firestore, 'inventory'), item)
-    const docSnap = await getDoc(docRef)
+  const addItem = async (itemName, newImageUrl) => {
+    const docRef = doc(collection(firestore, 'inventory'), itemName);
+    const docSnap = await getDoc(docRef);
+  
     if (docSnap.exists()) {
-      const { quantity } = docSnap.data()
-      await setDoc(docRef, { quantity: quantity + 1 })
+      const { quantity, imageUrl: oldImageUrl } = docSnap.data();
+  
+      if (oldImageUrl && oldImageUrl !== newImageUrl) {
+        const storageRef = ref(storage, oldImageUrl);
+        try {
+          await deleteObject(storageRef);
+          console.log("Old image deleted successfully");
+        } catch (error) {
+          console.error("Error deleting old image:", error);
+        }
+      }
+  
+      await setDoc(docRef, { quantity: quantity + 1, imageUrl: newImageUrl }, { merge: true });
     } else {
-      await setDoc(docRef, { quantity: 1 })
+      await setDoc(docRef, { quantity: 1, imageUrl: newImageUrl });
     }
-    await updateInventory()
-  }
+  
+    await updateInventory();
+  };  
   
   const removeItem = async (item) => {
     const docRef = doc(collection(firestore, 'inventory'), item)
     const docSnap = await getDoc(docRef)
     if (docSnap.exists()) {
-      const { quantity } = docSnap.data()
+      const { quantity, imageUrl } = docSnap.data()
       if (quantity === 1) {
         await deleteDoc(docRef)
+        if (imageUrl) {
+          const storageRef = ref(storage, imageUrl);
+          await deleteObject(storageRef);
+        }
       } else {
-        await setDoc(docRef, { quantity: quantity - 1 })
+        await setDoc(docRef, { quantity: quantity - 1, imageUrl: quantity - 1 > 0 ? imageUrl : '' }, { merge: true })
       }
     }
     await updateInventory()
   }
 
   const handleOpen = () => setOpen(true)
-  const handleClose = () => setOpen(false)
+  const handleClose = () => {
+    setOpen(false)
+    setItemName("")
+    setImageUrl("")
+  }
+
+  const handleModalClose = async () => {
+    if (imageUrl) {
+      const storageRef = ref(storage, imageUrl);
+      await deleteObject(storageRef);
+    }
+    setOpen(false);
+    setItemName("");
+    setImageUrl("");
+  };
+
+  const handleCameraOpen = () => setCameraOpen(true)
+  const handleCameraClose = () => setCameraOpen(false)
+  
+  const handleTakePhoto = async () => {
+    const photo = cameraRef.current.takePhoto();
+
+    // Convert the photo (data URL) to a Blob in JPEG format
+    const response = await fetch(photo);
+    const blob = await response.blob();
+    const jpegBlob = new Blob([blob], { type: 'image/jpeg' });
+
+    const imageName = new Date().toISOString() + '.jpeg';
+    const storageRef = ref(storage, `images/${imageName}`);
+    const uploadTask = uploadBytesResumable(storageRef, jpegBlob);
+
+    setUploading(true);
+
+    uploadTask.on(
+        "state_changed",
+        (snapshot) => {
+            const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+            setProgress(progress);
+        },
+        (error) => {
+            console.error("Upload error:", error);
+            setUploading(false);
+        },
+        () => {
+            getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                setImageUrl(downloadURL);
+                setUploading(false);
+            });
+        }
+    );
+
+    setSnackbarImage(photo);
+    setSnackbarOpen(true);
+    setTimeout(() => {
+        setSnackbarOpen(false);
+        setSnackbarImage(null);
+    }, 3000);
+    handleCameraClose();
+  };
+  
+  const handleAddItem = async () => {
+    if (!itemName) {
+      console.error("Item name is missing");
+      return;
+    }
+    await addItem(itemName, imageUrl);
+    handleClose();
+  };
 
   // Filter inventory based on search query
   const filteredInventory = inventory.filter(item => 
@@ -183,18 +289,26 @@ export default function Home() {
           </Typography>
           <Modal
             open={open}
-            onClose={handleClose}
+            onClose={handleModalClose}
             aria-labelledby="modal-modal-title"
             aria-describedby="modal-modal-description"
           >
-            <Box sx={modalStyle}>
+            <Box 
+              sx={{ 
+                ...modalStyle, 
+                width: '80%',
+                maxWidth: '400px',
+                maxHeight: '90vh', 
+                overflowY: 'auto',
+              }}
+            >
               <Typography id="modal-modal-title" variant="h5" fontWeight="bold" component="h2" color="black" mb={2}>
                 Add Item
               </Typography>
-              <Stack width="100%" direction={'row'} spacing={3}>
+              <Stack width="100%" direction={'column'} spacing={3}>
                 <TextField
                   id="outlined-basic"
-                  label="Item"
+                  label="Item Name"
                   variant="outlined"
                   fullWidth
                   value={itemName}
@@ -202,19 +316,84 @@ export default function Home() {
                 />
                 <Button
                   variant="contained"
-                  onClick={() => {
-                    addItem(itemName)
-                    setItemName('')
-                    handleClose()
-                  }}
+                  onClick={handleCameraOpen}
+                  sx={{ ...cameraButtonStyle, padding: '12px 20px', fontSize: '1.5rem' }}
+                >
+                  <FaCamera />
+                </Button>
+                {uploading && (
+                  <Box display="flex" alignItems="center" gap={2}>
+                    <CircularProgress size={24} />
+                    <Typography variant="body1">{`Uploading: ${progress}%`}</Typography>
+                  </Box>
+                )}
+                {imageUrl && (
+                  <Typography variant="body1" color="primary">
+                    Image uploaded successfully!
+                  </Typography>
+                )}
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleAddItem}
+                  disabled={!itemName}
                   sx={addItemButtonStyle}
                 >
-                  Add
+                  Add Item
                 </Button>
               </Stack>
             </Box>
           </Modal>
-          <Box display="flex" justifyContent="space-between" mb={3}>
+
+          <Modal
+            open={cameraOpen}
+            onClose={handleCameraClose}
+            aria-labelledby="camera-modal-title"
+            aria-describedby="camera-modal-description"
+          >
+            <Box 
+              sx={{ 
+                ...modalStyle, 
+                width: { xs: '80%', md: '60%' },
+                height: 'auto',
+                maxHeight: '90vh', 
+                overflowY: 'auto'
+              }}
+            >
+              <Typography id="camera-modal-title" variant="h5" fontWeight="bold" component="h2" color="black" mb={2}>
+                Take a Picture
+              </Typography>
+              <Box mt={3} display="flex" flexDirection="column" alignItems="center" gap={3} style={{ margin: 'auto', width: '70%'}}>
+                <Camera ref={cameraRef} aspectRatio={1} style={{ width: '100%', maxWidth: '600px', height: 'auto' }} />
+                <Button
+                  variant="contained"
+                  onClick={handleTakePhoto}
+                  sx={{ ...cameraButtonStyle, padding: '10px 20px', fontSize: 'clamp(0.8rem, 1.5vw, 1rem)' }}
+                >
+                  Take Photo
+                </Button>
+              </Box>
+            </Box>
+          </Modal>
+
+          {snackbarOpen && (
+            <Box
+              position="fixed"
+              bottom="20px"
+              left="20px"
+              bgcolor="white"
+              boxShadow={3}
+              borderRadius="10px"
+              p={0.5}
+              display="flex"
+              alignItems="center"
+              gap={2}
+            >
+              <img src={snackbarImage} alt="Taken" style={{ width: '200px', height: 'auto', borderRadius: '5px' }} />
+            </Box>
+          )}
+
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
             <TextField
               label="Search"
               variant="outlined"
@@ -222,15 +401,18 @@ export default function Home() {
               onChange={(e) => setSearchQuery(e.target.value)}
               sx={{ bgcolor: 'white', fontSize: '1.2rem', width: '40%' }}
             />
-            <Button 
-              variant="contained" 
-              color="primary"
-              onClick={handleOpen} 
-              sx={addItemButtonStyle}
-            >
-              Add New Item
-            </Button>
+            <Box display="flex" gap={1}>
+              <Button 
+                variant="contained" 
+                color="primary"
+                onClick={handleOpen} 
+                sx={addItemButtonStyle}
+              >
+                Add New Item
+              </Button>
+            </Box>
           </Box>
+
           <Box 
             bgcolor="white" 
             width="100%" 
@@ -254,48 +436,52 @@ export default function Home() {
                 Inventory Items
               </Typography>
             </Box>
-            <Stack width="100%" height="300px" overflow={'auto'} bgcolor="white">
-              {filteredInventory.map(({name, quantity}) => (
-                <Box
-                  key={name}
-                  width="100%"
-                  minHeight="100px"
-                  display={'flex'}
-                  justifyContent={'space-between'}
-                  alignItems={'center'}
-                  bgcolor={'#E3F2FD'}
-                  paddingX={{xs: 2, md: 5}}
-                  borderRadius="15px"
-                  mb={2}
-                >
-                  <Typography variant="h5" color="primary" textAlign="center">
-                    {name.charAt(0).toUpperCase() + name.slice(1)}
-                  </Typography>
-                  <Box sx={quantityControlsStyle}>
-                    <Typography variant="h5" color="primary" textAlign="center">
-                      Quantity:
+            <Grid container spacing={2} bgcolor="white" padding={2} style={{ height: '350px', overflow: 'auto' }}>
+              {filteredInventory.map(({ name, quantity, imageUrl }) => (
+                <Grid item xs={12} md={6} lg={4} key={name}>
+                  <Box
+                    minHeight="140px"
+                    display={'flex'}
+                    flexDirection={'column'}
+                    justifyContent={'space-between'}
+                    alignItems={'center'}
+                    bgcolor={'#E3F2FD'}
+                    paddingX={{ xs: 2, md: 5 }}
+                    paddingY={3}
+                    borderRadius="15px"
+                  >
+                    {quantity > 0 && imageUrl && (
+                      <img src={imageUrl} alt={name} style={{ width: '100%', height: 'auto', maxHeight: '150px', objectFit: 'contain', borderRadius: '10px' }} />
+                    )}
+                    <Typography variant="h5" fontWeight="bold" color="primary" textAlign="center" marginY={2}>
+                      {name.charAt(0).toUpperCase() + name.slice(1)}
                     </Typography>
-                    <Button 
-                      variant="contained" 
-                      onClick={() => removeItem(name)}
-                      sx={{ ...subtractQuantityStyle, ...quantityButtonStyle }}
-                    >
-                      -
-                    </Button>
-                    <Typography variant="h5" color="primary" textAlign="center">
-                      {quantity}
-                    </Typography>
-                    <Button 
-                      variant="contained" 
-                      onClick={() => addItem(name)}
-                      sx={{ ...addQuantityStyle, ...quantityButtonStyle }}
-                    >
-                      +
-                    </Button>
+                    <Box sx={quantityControlsStyle}>
+                      <Typography variant="h6" color="primary" textAlign="center" marginRight={1}>
+                        Quantity:
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        onClick={() => removeItem(name)}
+                        sx={{ ...subtractQuantityStyle, ...quantityButtonStyle }}
+                      >
+                        -
+                      </Button>
+                      <Typography variant="h6" color="primary" textAlign="center" marginX={1}>
+                        {quantity}
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        onClick={() => addItem(name, imageUrl)}
+                        sx={{ ...addQuantityStyle, ...quantityButtonStyle }}
+                      >
+                        +
+                      </Button>
+                    </Box>
                   </Box>
-                </Box>
+                </Grid>
               ))}
-            </Stack>
+            </Grid>
           </Box>
         </Box>
       </Box>
