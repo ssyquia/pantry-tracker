@@ -2,12 +2,15 @@
 The Pantry Tracker is a web-based tool designed to assist users in efficiently managing their pantry items. It enables users to add, update, delete, and search for specific items in their pantry.
 
 ## Core Features
-1. Add Items: Users can input new pantry items by providing a name OR optionally uploading an image. Uploaded images are automatically classified using the Clarifai API.
+1. Add Items:
+- Users can input new pantry items by providing a name OR optionally uploading an image.
+- Users can specify the quantity of their items through + and - buttons.
+- Uploaded images are automatically classified using the Clarifai API.
 2. Delete Items: Users can remove items from their pantry, which updates the list accordingly.
 3. Search Items: Users can filter pantry items by their names.
 
 ## Technologies Used
-- Frontend: React, Material UI, Next.js
+- Frontend: React (Camera Pro), Material UI, Next.js
 - Backend: Firebase (Firestore, Storage)
 - Image Classification API: Clarifai API
 
