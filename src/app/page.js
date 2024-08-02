@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { createTheme, ThemeProvider } from '@mui/material/styles'
-import { Grid, Box, Stack, Typography, Button, Modal, TextField, CssBaseline, useMediaQuery, Snackbar, CircularProgress } from '@mui/material'
-import { firestore, storage } from '@/firebase'
-import { collection, doc, getDocs, query, setDoc, deleteDoc, getDoc } from 'firebase/firestore'
+import { useState, useEffect, useRef } from 'react';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { Grid, Box, Stack, Typography, Button, Modal, TextField, CssBaseline, useMediaQuery, Snackbar, CircularProgress } from '@mui/material';
+import { firestore, storage } from '@/firebase';
+import { collection, doc, getDocs, query, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { Camera } from "react-camera-pro";
 import { FaCamera } from "react-icons/fa";
+import axios from 'axios';
 
 const theme = createTheme({
   palette: {
@@ -42,7 +43,7 @@ const theme = createTheme({
   shape: {
     borderRadius: 12,
   },
-})
+});
 
 const modalStyle = {
   position: 'absolute',
@@ -56,7 +57,7 @@ const modalStyle = {
   flexDirection: 'column',
   gap: 3,
   borderRadius: '15px',
-}
+};
 
 const addItemButtonStyle = {
   padding: '10px 20px',
@@ -68,12 +69,12 @@ const addItemButtonStyle = {
   '&:hover': {
     backgroundColor: '#45A049',
   },
-}
+};
 
 const quantityControlsStyle = {
   display: 'flex',
   alignItems: 'center'
-}
+};
 
 const quantityButtonStyle = {
   height: '24px',
@@ -81,21 +82,21 @@ const quantityButtonStyle = {
   color: '#FFFFFF',
   borderRadius: '20px',
   minWidth: 0,
-}
+};
 
 const addQuantityStyle = {
   backgroundColor: '#4CAF50',
   '&:hover': {
     backgroundColor: '#45A049',
   },
-}
+};
 
 const subtractQuantityStyle = {
   backgroundColor: '#f44336',
   '&:hover': {
     backgroundColor: '#d32f2f',
   },
-}
+};
 
 const cameraButtonStyle = {
   backgroundColor: '#0D47A1',
@@ -108,46 +109,46 @@ const cameraButtonStyle = {
   '&:hover': {
     backgroundColor: '#0A3D91',
   },
-}
+};
 
 export default function Home() {
-  const [inventory, setInventory] = useState([])
-  const [open, setOpen] = useState(false)
-  const [itemName, setItemName] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [cameraOpen, setCameraOpen] = useState(false)
-  const cameraRef = useRef(null)
+  const [inventory, setInventory] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [itemName, setItemName] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const cameraRef = useRef(null);
 
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarImage, setSnackbarImage] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [imageUrl, setImageUrl] = useState("");
+  const [imageUrl, setImageUrl] = useState('');
 
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
-  const isShortScreen = useMediaQuery('(max-height: 720px)')
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isShortScreen = useMediaQuery('(max-height: 720px)');
 
   const updateInventory = async () => {
-    const snapshot = query(collection(firestore, 'inventory'))
-    const docs = await getDocs(snapshot)
-    const inventoryList = []
+    const snapshot = query(collection(firestore, 'inventory'));
+    const docs = await getDocs(snapshot);
+    const inventoryList = [];
     docs.forEach((doc) => {
-      inventoryList.push({ name: doc.id, ...doc.data() })
-    })
-    setInventory(inventoryList)
-  }
-  
+      inventoryList.push({ name: doc.id, ...doc.data() });
+    });
+    setInventory(inventoryList);
+  };
+
   useEffect(() => {
-    updateInventory()
-  }, [])
+    updateInventory();
+  }, []);
 
   const addItem = async (itemName, newImageUrl) => {
     const docRef = doc(collection(firestore, 'inventory'), itemName);
     const docSnap = await getDoc(docRef);
-  
+
     if (docSnap.exists()) {
       const { quantity, imageUrl: oldImageUrl } = docSnap.data();
-  
+
       if (oldImageUrl && oldImageUrl !== newImageUrl) {
         const storageRef = ref(storage, oldImageUrl);
         try {
@@ -157,39 +158,39 @@ export default function Home() {
           console.error("Error deleting old image:", error);
         }
       }
-  
+
       await setDoc(docRef, { quantity: quantity + 1, imageUrl: newImageUrl }, { merge: true });
     } else {
       await setDoc(docRef, { quantity: 1, imageUrl: newImageUrl });
     }
-  
+
     await updateInventory();
-  };  
-  
+  };
+
   const removeItem = async (item) => {
-    const docRef = doc(collection(firestore, 'inventory'), item)
-    const docSnap = await getDoc(docRef)
+    const docRef = doc(collection(firestore, 'inventory'), item);
+    const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      const { quantity, imageUrl } = docSnap.data()
+      const { quantity, imageUrl } = docSnap.data();
       if (quantity === 1) {
-        await deleteDoc(docRef)
+        await deleteDoc(docRef);
         if (imageUrl) {
           const storageRef = ref(storage, imageUrl);
           await deleteObject(storageRef);
         }
       } else {
-        await setDoc(docRef, { quantity: quantity - 1, imageUrl: quantity - 1 > 0 ? imageUrl : '' }, { merge: true })
+        await setDoc(docRef, { quantity: quantity - 1, imageUrl: quantity - 1 > 0 ? imageUrl : '' }, { merge: true });
       }
     }
-    await updateInventory()
-  }
+    await updateInventory();
+  };
 
-  const handleOpen = () => setOpen(true)
+  const handleOpen = () => setOpen(true);
   const handleClose = () => {
-    setOpen(false)
-    setItemName("")
-    setImageUrl("")
-  }
+    setOpen(false);
+    setItemName('');
+    setImageUrl('');
+  };
 
   const handleModalClose = async () => {
     if (imageUrl) {
@@ -197,57 +198,106 @@ export default function Home() {
       await deleteObject(storageRef);
     }
     setOpen(false);
-    setItemName("");
-    setImageUrl("");
+    setItemName('');
+    setImageUrl('');
   };
 
-  const handleCameraOpen = () => setCameraOpen(true)
-  const handleCameraClose = () => setCameraOpen(false)
+  const handleCameraOpen = () => setCameraOpen(true);
+  const handleCameraClose = () => setCameraOpen(false);
+
+  const classifyImage = async (imageUrl) => {
+    const PAT = '1ec7a28922ea4a488b38c9d0b72d55da';
+    const USER_ID = 'clarifai';
+    const APP_ID = 'main';
+    const MODEL_ID = 'food-item-v1-recognition';
+    const MODEL_VERSION_ID = 'dfebc169854e429086aceb8368662641';
+  
+    const raw = JSON.stringify({
+      "user_app_id": {
+        "user_id": USER_ID,
+        "app_id": APP_ID
+      },
+      "inputs": [
+        {
+          "data": {
+            "image": {
+              "url": imageUrl
+            }
+          }
+        }
+      ]
+    });
+  
+    const requestOptions = {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': 'Key ' + PAT
+      },
+      body: raw
+    };
+  
+    try {
+      const response = await fetch(`https://api.clarifai.com/v2/models/${MODEL_ID}/versions/${MODEL_VERSION_ID}/outputs`, requestOptions);
+      const result = await response.json();
+  
+      const concepts = result.outputs[0].data.concepts;
+      console.log("Classification results:", concepts);
+      if (concepts.length > 0) {
+        setItemName(concepts[0].name);
+      } else {
+        console.error('No concepts detected');
+      }
+    } catch (error) {
+      console.error('Error classifying image:', error);
+    }
+  };  
   
   const handleTakePhoto = async () => {
     const photo = cameraRef.current.takePhoto();
-
+  
     // Convert the photo (data URL) to a Blob in JPEG format
     const response = await fetch(photo);
     const blob = await response.blob();
     const jpegBlob = new Blob([blob], { type: 'image/jpeg' });
-
+  
     const imageName = new Date().toISOString() + '.jpeg';
     const storageRef = ref(storage, `images/${imageName}`);
     const uploadTask = uploadBytesResumable(storageRef, jpegBlob);
-
+  
     setUploading(true);
-
+  
     uploadTask.on(
-        "state_changed",
-        (snapshot) => {
-            const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-            setProgress(progress);
-        },
-        (error) => {
-            console.error("Upload error:", error);
-            setUploading(false);
-        },
-        () => {
-            getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-                setImageUrl(downloadURL);
-                setUploading(false);
-            });
-        }
+      'state_changed',
+      (snapshot) => {
+        const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+        setProgress(progress);
+      },
+      (error) => {
+        console.error('Upload error:', error);
+        setUploading(false);
+      },
+      () => {
+        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+          setImageUrl(downloadURL);
+          classifyImage(downloadURL); // Classify the image and set the item name
+          setUploading(false);
+        });
+      }
     );
-
+  
     setSnackbarImage(photo);
     setSnackbarOpen(true);
     setTimeout(() => {
-        setSnackbarOpen(false);
-        setSnackbarImage(null);
+      setSnackbarOpen(false);
+      setSnackbarImage(null);
     }, 3000);
     handleCameraClose();
-  };
+  };  
   
   const handleAddItem = async () => {
     if (!itemName) {
-      console.error("Item name is missing");
+      console.error('Item name is missing');
       return;
     }
     await addItem(itemName, imageUrl);
@@ -255,9 +305,9 @@ export default function Home() {
   };
 
   // Filter inventory based on search query
-  const filteredInventory = inventory.filter(item => 
+  const filteredInventory = inventory.filter((item) =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  );  
 
   return (
     <ThemeProvider theme={theme}>
@@ -273,14 +323,14 @@ export default function Home() {
         gap={2}
         sx={{ overflow: 'auto' }}
       >
-        <Box 
+        <Box
           className={isShortScreen ? 'short-screen-card' : ''}
-          sx={{ 
-            width: { xs: '100%', sm: '85%', md: '65%' }, 
-            p: { xs: 2, sm: 3, md: 4 }, 
-            bgcolor: isMobile ? 'transparent' : '#F0F0F0', 
-            boxShadow: isMobile ? 'none' : 6, 
-            borderRadius: isMobile ? 0 : 3, 
+          sx={{
+            width: { xs: '100%', sm: '85%', md: '65%' },
+            p: { xs: 2, sm: 3, md: 4 },
+            bgcolor: isMobile ? 'transparent' : '#F0F0F0',
+            boxShadow: isMobile ? 'none' : 6,
+            borderRadius: isMobile ? 0 : 3,
             border: isMobile ? 'none' : '1px solid #ddd',
           }}
         >
@@ -293,12 +343,12 @@ export default function Home() {
             aria-labelledby="modal-modal-title"
             aria-describedby="modal-modal-description"
           >
-            <Box 
-              sx={{ 
-                ...modalStyle, 
+            <Box
+              sx={{
+                ...modalStyle,
                 width: '80%',
                 maxWidth: '400px',
-                maxHeight: '90vh', 
+                maxHeight: '90vh',
                 overflowY: 'auto',
               }}
             >
@@ -351,19 +401,19 @@ export default function Home() {
             aria-labelledby="camera-modal-title"
             aria-describedby="camera-modal-description"
           >
-            <Box 
-              sx={{ 
-                ...modalStyle, 
+            <Box
+              sx={{
+                ...modalStyle,
                 width: { xs: '80%', md: '60%' },
                 height: 'auto',
-                maxHeight: '90vh', 
-                overflowY: 'auto'
+                maxHeight: '90vh',
+                overflowY: 'auto',
               }}
             >
               <Typography id="camera-modal-title" variant="h5" fontWeight="bold" component="h2" color="black" mb={2}>
                 Take a Picture
               </Typography>
-              <Box mt={3} display="flex" flexDirection="column" alignItems="center" gap={3} style={{ margin: 'auto', width: '70%'}}>
+              <Box mt={3} display="flex" flexDirection="column" alignItems="center" gap={3} style={{ margin: 'auto', width: '70%' }}>
                 <Camera ref={cameraRef} aspectRatio={1} style={{ width: '100%', maxWidth: '600px', height: 'auto' }} />
                 <Button
                   variant="contained"
@@ -402,10 +452,10 @@ export default function Home() {
               sx={{ bgcolor: 'white', fontSize: '1.2rem', width: '40%' }}
             />
             <Box display="flex" gap={1}>
-              <Button 
-                variant="contained" 
+              <Button
+                variant="contained"
                 color="primary"
-                onClick={handleOpen} 
+                onClick={handleOpen}
                 sx={addItemButtonStyle}
               >
                 Add New Item
@@ -413,14 +463,14 @@ export default function Home() {
             </Box>
           </Box>
 
-          <Box 
-            bgcolor="white" 
-            width="100%" 
+          <Box
+            bgcolor="white"
+            width="100%"
             borderRadius="15px"
-            sx={{ 
+            sx={{
               p: { sm: 2 },
-              borderRadius: 2, 
-              border: { sm: 0, md: '1px solid #ddd' }
+              borderRadius: 2,
+              border: { sm: 0, md: '1px solid #ddd' },
             }}
           >
             <Box
@@ -486,5 +536,5 @@ export default function Home() {
         </Box>
       </Box>
     </ThemeProvider>
-  )
+  );
 }
