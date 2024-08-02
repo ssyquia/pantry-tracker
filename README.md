@@ -1,21 +1,29 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+## Overview
+The Pantry Tracker is a web-based tool designed to assist users in efficiently managing their pantry items. It enables users to add, update, delete, and search for specific items in their pantry.
 
-## Getting Started
+## Core Features
+1. Add Items: Users can input new pantry items by providing a name OR optionally uploading an image. Uploaded images are automatically classified using the Clarifai API.
+2. Delete Items: Users can remove items from their pantry, which updates the list accordingly.
+3. Search Items: Users can filter pantry items by their names.
 
-First, run the development server:
+## Technologies Used
+- Frontend: React, Material UI, Next.js
+- Backend: Firebase (Firestore, Storage)
+- Image Classification API: Clarifai API
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Deployment:
+- Vercel: Used for deploying the Next.js application in a production environment.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Features
+- Responsive Design: Adjusts to different screen sizes.
+- File Handling: Users can upload images, which are managed and processed using Firebase Storage and the Clarifai API.
+- Image Classification: Once an image is classified by the Food Recognition model via the Clarifai API, the item name is automatically added.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Future Plans
+- User Authentication: To manage personalized data and allow multiple users to manage their own pantries.
+- Integration with Shopping Lists: Enable users to create shopping lists based on missing items or pantry requirements.
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+
+
+
+
